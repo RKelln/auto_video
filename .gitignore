@@ -1,0 +1,28 @@
+# .gitignore for python
+
+# Python compiled files
+*.pyc   
+
+# Text files (settings, logs, etc)
+*.txt   
+
+# Media files
+*.mp4
+*.mp3
+
+# Image files
+*.jpg
+*.png
+*.webp
+*.jpeg
+*.gif
+*.webp
+
+# environment
+env/
+.vscode/
+
+# python cache
+__pycache__/
+
+
