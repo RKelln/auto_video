@@ -9,20 +9,19 @@ from moviepy.editor import *
 path_to_list = "artists.txt"
 
 # Define the durations
-artist_name_duration = 4
-title_duration = 4
-fade_duration = 0.5
-media_duration = 10
+default_title_duration = 4
+default_fade_duration = 0.5
+default_media_duration = 14
 
 # Define the size of the final video
-video_size = (1920, 1080)
+default_video_size = (1920, 1080)
 
 # Define the background color for the artist name and title displays
-bg_color = "black"
+default_bg_color = "black"
 
 # Define the font and font size for the artist name and title displays
-font = "Arial"
-font_size = 50
+default_font = "Arial"
+default_font_size = 50
 
 # Accepted file extensions
 accepted_extensions = (".jpg", ".jpeg", ".png", ".webp",
@@ -232,6 +231,22 @@ def create_video(media_list, video_size, bg_color,
         print("No media files found.")
         return
 
+    print("Creating video from", len(media_list), "media files.")
+    print("Video size:", video_size)
+    print("Background color:", bg_color)
+    print("Artist font:", artist_font)
+    print("Title font:", title_font)
+    print("Font size:", font_size)
+    print("Fade duration:", fade_duration)
+    print("Media duration:", media_duration)
+    print("Title duration:", title_duration)
+    print("Output settings:", output_settings)
+    print("Output file:", output_file)
+    print("Audio:", audio)
+    print("Base path:", base_path)
+    print("Promo clip:", promo_clip is not None)
+    print("Promo interval:", promo_interval)
+
     time_since_promo = -1
     if promo_clip is not None:
         # resize the promo clip
@@ -263,7 +278,7 @@ def create_video(media_list, video_size, bg_color,
 
         if previous_artist == artist_name:
             # reduce time between clips
-            media_duration_multiplier = 0.75
+            media_duration_multiplier = 0.85
         else: # new artist
             media_duration_multiplier = 1.0
 
@@ -355,23 +370,23 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "path_to_list", help="path to directory or text file with list of directories")
+        "path_to_list", nargs="?", help="path to directory or text file with list of directories")
     parser.add_argument("--base_path", type=str, default="", help="base directory path for media files")
     parser.add_argument("--video_size", type=tuple,
-                        default=video_size, help="size of final video")
+                        default=default_video_size, help="size of final video")
     parser.add_argument("--title_duration", type=float,
-                        default=title_duration, help="duration of title display")
+                        default=default_title_duration, help="duration of title display")
     parser.add_argument("--media_duration", type=float,
-                        default=media_duration, help="duration of media display")
-    parser.add_argument("--fade_duration", type=float, default=fade_duration,
+                        default=default_media_duration, help="duration of media display")
+    parser.add_argument("--fade_duration", type=float, default=default_fade_duration,
                         help="duration (sec) of fade in and fade out")
-    parser.add_argument("--artist_font", type=str, default=font,
+    parser.add_argument("--artist_font", type=str, default=default_font,
                         help="font for artist name")
-    parser.add_argument("--title_font", type=str, default=font,
+    parser.add_argument("--title_font", type=str, default=default_font,
                         help="font for artwork title")
-    parser.add_argument("--font_size", type=int, default=font_size,
+    parser.add_argument("--font_size", type=int, default=default_font_size,
                         help="font size for artist name and title displays")
-    parser.add_argument("--bg_color", type=str, default=bg_color,
+    parser.add_argument("--bg_color", type=str, default=default_bg_color,
                         help="background color for artist name and title displays")
     parser.add_argument("--output_file", type=str,
                         default="", help="path to output file")
@@ -383,16 +398,15 @@ if __name__ == "__main__":
                         default="", help="path to promo clip that plays interspersed with media clips")
     parser.add_argument("--promo_interval", type=str,
                         default="", help="time to wait between promo clips")
-    
     # info
     parser.add_argument("--version", action="version", version="%(prog)s 1.0")
-    parser.add_argument("--info", action="store_true",
-                        help="print moviepy info and exit")
+    parser.add_argument("--info", action="store_true", help="print moviepy info and exit")
+    
     args = parser.parse_args()
 
     if args.info:
         print_moviepy_info()
-        exit()
+        parser.exit()
 
     # convert time string to seconds
     promo_interval = -1.0
@@ -403,12 +417,13 @@ if __name__ == "__main__":
     if args.base_path != "":
         args.base_path = os.path.normpath(args.base_path)
         args.base_path = args.base_path + os.sep
-        print(" - base_path:", args.base_path)
 
     # parse the list of media files
     if (args.path_to_list.endswith(".txt")):
         media_list = parse_list(args.path_to_list, base_path=args.base_path)
     else:
+        if args.path_to_list == "":
+            args.path_to_list = os.getcwd()
         args.path_to_list = os.path.normpath(args.path_to_list)
         media_list = get_all_files(args.path_to_list, recursive=True, base_path=args.base_path)
         # save settings to file named after the final directory
