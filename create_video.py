@@ -30,25 +30,26 @@ accepted_extensions = (".jpg", ".jpeg", ".png", ".webp",
 
 
 # Define the function to display the artist name and title
-def display_artist_and_title(artist_name: str, title: str, title_duration: float, font_size: int, artist_font: str, title_font: str, bg_color: str, size: tuple):
+def display_artist_and_title(artist_name: str, title: str, duration: float, font_size: int, artist_font: str, title_font: str, bg_color: str, size: tuple):
 
     # Create a black clip for the artist name display
     artist_name_clip = TextClip(
         artist_name,
         fontsize=font_size, font=artist_font, color="white", align="center"
-    ).set_duration(title_duration)
+    ).set_duration(duration)
 
     # Create a black clip for the title display
+    delay = 0.25
     title_clip = TextClip(
         title,
         fontsize=font_size, font=title_font, color="white", align="center",
         size=size
-    ).set_duration(title_duration - 0.25)
+    ).set_duration(duration - delay)
 
     # Concatenate the artist name and title clips
     display_clip = CompositeVideoClip([
         artist_name_clip.set_position("center"), 
-        title_clip.set_start(0.25).set_position(("center", font_size * 2.0))], # relative to artist_name_clip
+        title_clip.set_start(delay).set_position(("center", font_size * 2.0))], # relative to artist_name_clip
         size=size)
 
     return display_clip
@@ -182,6 +183,10 @@ def parse_list(path_to_list, base_path=""):
         for line in f:
             # Remove the newline character
             line = line.strip()
+
+            # ignore comments and blank lines
+            if line.startswith("#") or line == "":
+                continue
 
             media_list.extend(get_all_files(line, base_path=base_path))
 
@@ -428,7 +433,7 @@ if __name__ == "__main__":
                  title_font=args.title_font,
                  font_size=args.font_size,
                  fade_duration=args.fade_duration,
-                 title_duration=args.media_duration,
+                 title_duration=args.title_duration,
                  media_duration=args.media_duration,
                  output_file=args.output_file,
                  output_settings=args.output_settings,
