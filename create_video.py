@@ -25,7 +25,7 @@ default_font_size = 50
 
 # Accepted file extensions
 accepted_extensions = (".jpg", ".jpeg", ".png", ".webp",
-                       ".mov", ".mp4", ".avi", ".webm")
+                       ".mov", ".mp4", ".avi", ".webm", ".mkv")
 
 
 # Define the function to display the artist name and title
@@ -84,7 +84,9 @@ def create_media_clip(media_path, media_duration=7, size=(1920, 1080)):
         media_clip = media_clip.set_duration(media_duration)
     elif media_path.lower().endswith((".mov", ".mp4", ".avi", ".webm")):
         media_clip = VideoFileClip(media_path)
-
+    else:
+        raise ValueError("Unsupported file type: " + media_path)
+    
     media_clip = resize(media_clip, size).set_position("center")
     return media_clip
 
@@ -120,13 +122,6 @@ def resize(clip, size=(1920, 1080), enlarge=True):
     elif new_w < clip_w or new_h < clip_h:
         # shrink to fit
         clip = clip.resize((new_w, new_h))
-
-    # if clip.w > clip.h:
-    #     if clip.w > size[0]:
-    #         clip = clip.resize(width=size[0])
-    # else:
-    #     if clip.h > size[1]:
-    #         clip = clip.resize(height=size[1])
 
     return clip
 
@@ -362,18 +357,20 @@ def time_string_to_seconds(time_str : str) -> float:
 def print_moviepy_info():
     print("MoviePy version:", moviepy.__version__)
     print("Installed fonts:", sorted(TextClip.list('font')))
-    print("Available colors:", sorted(TextClip.list('color')))
+    print("Available colors:", sorted(str(b) for b in TextClip.list('color')))
 
 
 if __name__ == "__main__":
     # accept arguments from the command line
+    # accept parameters from a text file using @text_file: 
+    # https://docs.python.org/3/library/argparse.html#fromfile-prefix-chars
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(fromfile_prefix_chars="@")
     parser.add_argument(
         "path_to_list", nargs="?", help="path to directory or text file with list of directories")
     parser.add_argument("--base_path", type=str, default="", help="base directory path for media files")
-    parser.add_argument("--video_size", type=tuple,
-                        default=default_video_size, help="size of final video")
+    parser.add_argument("--video_size", type=str,
+                        default="1920x1080", help="size of final video")
     parser.add_argument("--title_duration", type=float,
                         default=default_title_duration, help="duration of title display")
     parser.add_argument("--media_duration", type=float,
@@ -413,10 +410,22 @@ if __name__ == "__main__":
     if args.promo_interval != "":
         promo_interval = time_string_to_seconds(args.promo_interval)
 
+    # convert video size to tuple
+    video_size = default_video_size
+    if args.video_size != "":
+        video_size = tuple(map(int, args.video_size.split('x')))
+
     # normalize paths, ensure ends with separator
     if args.base_path != "":
         args.base_path = os.path.normpath(args.base_path)
         args.base_path = args.base_path + os.sep
+
+    # check bg_color is valid
+    if args.bg_color != "":
+        if bytes(args.bg_color, "utf8") not in TextClip.list('color'):
+            print("Invalid background color:", args.bg_color)
+            print("Available colors:", sorted(str(b) for b in TextClip.list('color')))
+            parser.exit()
 
     # parse the list of media files
     if (args.path_to_list.endswith(".txt")):
@@ -435,14 +444,14 @@ if __name__ == "__main__":
     # handle promo clip
     promo_clip = None
     if args.promo_clip != "":
-        args.promo_clip = os.path.join(args.base_path, os.path.normpath(args.promo_clip))
-        promo_clip = create_media_clip(args.promo_clip, args.media_duration, args.video_size)
+        args.promo_clip = os.path.join(args.base_path, args.promo_clip)
+        promo_clip = create_media_clip(args.promo_clip, args.media_duration, video_size)
         if args.promo_interval == "":
             promo_interval = 5 * 60.0 # five minute default
 
     # create the video
     create_video(media_list,
-                 video_size=args.video_size,
+                 video_size=video_size,
                  bg_color=args.bg_color,
                  artist_font=args.artist_font,
                  title_font=args.title_font,
