@@ -139,7 +139,8 @@ def fade_in_out(media_clip, fade_duration=1):
 def get_all_files(path, recursive=False, base_path=""):
     files = []
 
-    path = os.path.join(base_path, path)
+    if base_path == "" and not path.startswith(base_path):
+        path = os.path.join(base_path, path)
 
     if os.path.isdir(path):
         # Get the list of media files in the directory
@@ -153,7 +154,7 @@ def get_all_files(path, recursive=False, base_path=""):
                     continue
                 if recursive:
                     files.extend(get_all_files(
-                        os.path.join(path, f), recursive=recursive, base_path=base_path))
+                        os.path.join(path, f), recursive=recursive))
             elif f.lower().endswith(accepted_extensions):
                 files.append(os.path.join(path, f))
     elif path.lower().endswith(accepted_extensions):
@@ -188,9 +189,9 @@ def parse_list(path_to_list, base_path=""):
 
 
 def get_artist_name(media_path):
-    # Get the artist name final directory in the media path
-    artist_name = os.path.basename(os.path.dirname(media_path))
-
+    # Get the artist name first directory in the media path
+    artist_name = os.path.dirname(media_path).split(os.sep)[0]
+    
     # convert _ to spaces
     artist_name = artist_name.replace("_", " ")
 
@@ -219,7 +220,7 @@ def create_video(media_list, video_size, bg_color,
                  artist_font, title_font, font_size,
                  fade_duration, media_duration, title_duration,
                  output_settings="", output_file="output.mp4",
-                 audio=True, 
+                 audio=True, codec = "libx264",
                  base_path="",
                  promo_clip=None, promo_interval=300.0):
     if media_list == []:
@@ -228,6 +229,7 @@ def create_video(media_list, video_size, bg_color,
 
     print("Creating video from", len(media_list), "media files.")
     print("Video size:", video_size)
+    print("Codec:", codec)
     print("Background color:", bg_color)
     print("Artist font:", artist_font)
     print("Title font:", title_font)
@@ -243,12 +245,14 @@ def create_video(media_list, video_size, bg_color,
     print("Promo interval:", promo_interval)
 
     time_since_promo = -1
-    if promo_clip is not None:
+    if promo_clip is not None and promo_clip != "":
         # resize the promo clip
         promo_clip = resize(promo_clip, size=video_size)
         # fade in and out
         promo_clip = fade_in_out(promo_clip, fade_duration)
         time_since_promo = promo_interval
+    else:
+        promo_clip = None
 
     # Create a list of clips for each artist's works
     clips = []
@@ -304,20 +308,22 @@ def create_video(media_list, video_size, bg_color,
 
         clips.append(artist_clip)
         previous_artist = artist_name
-        time_since_promo += artist_clip.duration
+        if promo_clip is not None:
+            time_since_promo += artist_clip.duration
 
     # Write the final video to a file
     if output_file != "":
         # Concatenate all the artist clips into one final video
         final_clip = concatenate_videoclips(clips)
-
-        # prefer hevc codec for mp4 files
-        codec = "libx264"
-        if output_file.endswith(".mp4"):
-            codec = "hevc"
         
+        # if mp4 then fast start
+        ffmpeg_params=[]
+        if output_file.endswith(".mp4"):
+            ffmpeg_params=["-movflags", "faststart"]
+
         final_clip.write_videofile(
-            output_file, fps=30, codec=codec, threads=4, audio=audio)
+            output_file, fps=30, codec=codec, audio=audio, 
+            ffmpeg_params=ffmpeg_params)
         final_clip.close()
 
     if output_settings != "":
@@ -371,6 +377,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_path", type=str, default="", help="base directory path for media files")
     parser.add_argument("--video_size", type=str,
                         default="1920x1080", help="size of final video")
+    parser.add_argument("--codec", type=str, default="libx264", help="codec for final video")
     parser.add_argument("--title_duration", type=float,
                         default=default_title_duration, help="duration of title display")
     parser.add_argument("--media_duration", type=float,
@@ -461,6 +468,7 @@ if __name__ == "__main__":
                  output_file=args.output_file,
                  output_settings=args.output_settings,
                  audio=(not args.no_audio),
+                 codec=args.codec,
                  base_path=args.base_path,
                  promo_clip=promo_clip,
                  promo_interval=promo_interval)
