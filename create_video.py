@@ -435,11 +435,10 @@ if __name__ == "__main__":
             args.path_to_list = os.getcwd()
         args.path_to_list = os.path.normpath(args.path_to_list)
         media_list = get_all_files(args.path_to_list, recursive=True, base_path=args.base_path)
+        media_list = sorted(media_list)
         # save settings to file named after the final directory
         filename = os.path.basename(args.path_to_list)
         args.output_settings = filename + ".txt"
-
-    media_list = sorted(media_list)
 
     # handle promo clip
     promo_clip = None
