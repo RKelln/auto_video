@@ -1,6 +1,6 @@
 # Auto video
 
-A very simple prototype python script that can create a video from a structure of folders and/or text file containing a list of media. Each image or video incorporated is preceded by a title containing the artist/author and the title of the work. Intended for use for looping videos of art exhibitions.
+A very simple python script that can create a video from a structure of folders and/or text file containing a list of media. Each image or video incorporated is preceded by a title containing the artist/author and the title of the work. Intended for use for creating looping videos of art for exhibitions.
 
 ## Install
 
@@ -37,9 +37,9 @@ This is designed to work with well-named file structures, for example:
   - Artist Name 2
     - 01_Order_by_Number_not_title_(2023).jpg
     - 02_Another_title_(2023).mp4
-    - _ignore-files_starting_with_underscores in the automatic list generation.jpg
+    - _ignore_files_starting_with_underscores in the automatic list generation.jpg
 
-Underscores are converted to spaces in the auto-titling. File extensions are removed.
+Underscores are converted to spaces in the auto-titling. File extensions are removed as are numbers preceding the title.
 
 
 ## Running:
@@ -86,3 +86,61 @@ Artist Name1/Work Title1 (YEAR).jpg
 Artist Name1/Work Title2 (YEAR).jpg
 Artist Name2/Work Title1 (YEAR).mp4
 ```
+
+# Options
+
+```
+usage: auto_video.py [-h] [--base_path BASE_PATH] [--video_size VIDEO_SIZE]
+                     [--codec CODEC] [--title_duration TITLE_DURATION]
+                     [--media_duration MEDIA_DURATION]
+                     [--fade_duration FADE_DURATION]
+                     [--artist_font ARTIST_FONT] [--title_font TITLE_FONT]
+                     [--font_size FONT_SIZE] [--bg_color BG_COLOR]
+                     [--output_file OUTPUT_FILE]
+                     [--output_settings OUTPUT_SETTINGS] [--no_audio]
+                     [--promo_clip PROMO_CLIP]
+                     [--promo_interval PROMO_INTERVAL] [--version] [--info]
+                     [path_to_list]
+
+positional arguments:
+  path_to_list          path to directory or text file with list of
+                        directories
+
+options:
+  -h, --help            show this help message and exit
+  --base_path BASE_PATH
+                        base directory path for media files
+  --video_size VIDEO_SIZE
+                        size of final video
+  --codec CODEC         codec for final video
+  --title_duration TITLE_DURATION
+                        duration of title display
+  --media_duration MEDIA_DURATION
+                        duration of media display
+  --fade_duration FADE_DURATION
+                        duration (sec) of fade in and fade out
+  --artist_font ARTIST_FONT
+                        font for artist name
+  --title_font TITLE_FONT
+                        font for artwork title
+  --font_size FONT_SIZE
+                        font size for artist name and title displays
+  --bg_color BG_COLOR   background color for artist name and title displays
+  --output_file OUTPUT_FILE
+                        path to output file
+  --output_settings OUTPUT_SETTINGS
+                        path to output settings file
+  --no_audio            remove audio from video
+  --promo_clip PROMO_CLIP
+                        path to promo clip that plays interspersed with media
+                        clips
+  --promo_interval PROMO_INTERVAL
+                        time to wait between promo clips
+  --version             show program's version number and exit
+```
+
+Note that times specified in the arguments can be time strings in the form of 00:00:00.000 or just a float value in seconds.
+
+### Promo image/video
+
+You can add a repeating splash/promo image/video interspersed into the video that will play every PROMO_INTERVAL (but only between different artists).
