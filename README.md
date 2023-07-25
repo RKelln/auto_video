@@ -31,7 +31,7 @@ since this is xml, you can comment out this line by appending the line with `<!-
 This is designed to work with well-named file structures, for example:
 
 - Works
-  - Artist Name
+  - Artist_Name_1
     - Title_of_the_Work_(2023).png
     - Title_of_work_(2021).png
   - Artist Name 2
@@ -54,7 +54,7 @@ Then you can edit that `all_works.txt` file to curate the list (removing works a
 $ python3 create_video.py --base_path ../works --output_file video.mp4 all_works.txt
 ```
 
-I can be helpful to set up a file with all the consistent settings between videos:
+It can be helpful to set up a file (e.g. `default_args.txt`) with all the consistent settings between videos:
 ```
 --artist_font
 Lato-Bold
@@ -79,12 +79,12 @@ $ python3 create_video.py --base_path ../works --output_file video.mp4 @default_
 
 ## Text file format
 
-Media wil lbe appended to the video in order specified in the textfile:
+Media wil lbe appended to the video in order specified in the text file:
 
 ```
-Artist Name1/Work Title1 (YEAR).jpg
-Artist Name1/Work Title2 (YEAR).jpg
-Artist Name2/Work Title1 (YEAR).mp4
+Artist_Name_1/Work Title1 (YEAR).jpg
+Artist_Name_1/Work_Title2_(YEAR).jpg
+Artist Name 2/Work Title1 (YEAR).mp4
 ```
 
 # Options
@@ -111,21 +111,21 @@ options:
   --base_path BASE_PATH
                         base directory path for media files
   --video_size VIDEO_SIZE
-                        size of final video
-  --codec CODEC         codec for final video
+                        size of final video [default: 1920x1080]
+  --codec CODEC         codec for final video [default: libx264]
   --title_duration TITLE_DURATION
-                        duration of title display
+                        duration of title display [default: 4 (seconds)]
   --media_duration MEDIA_DURATION
-                        duration of media display
+                        duration of media display [default: 14 (seconds)]
   --fade_duration FADE_DURATION
-                        duration (sec) of fade in and fade out
+                        duration (sec) of fade in and fade out [default: 0.5 (seconds)]
   --artist_font ARTIST_FONT
-                        font for artist name
+                        font for artist name [default: Arial]
   --title_font TITLE_FONT
-                        font for artwork title
+                        font for artwork title  [default: Arial]
   --font_size FONT_SIZE
-                        font size for artist name and title displays
-  --bg_color BG_COLOR   background color for artist name and title displays
+                        font size for artist name and title displays  [default: 50]
+  --bg_color BG_COLOR   background color for artist name and title displays  [default: black]
   --output_file OUTPUT_FILE
                         path to output file
   --output_settings OUTPUT_SETTINGS
@@ -143,4 +143,4 @@ Note that times specified in the arguments can be time strings in the form of 00
 
 ### Promo image/video
 
-You can add a repeating splash/promo image/video interspersed into the video that will play every PROMO_INTERVAL (but only between different artists).
+You can add a repeating splash/promo image/video interspersed into the video that will repeat after at least PROMO_INTERVAL (but only between different artists).
