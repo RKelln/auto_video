@@ -222,7 +222,8 @@ def create_video(media_list, video_size, bg_color,
                  output_settings="", output_file="output.mp4",
                  audio=True, codec = "libx264",
                  base_path="",
-                 promo_clip=None, promo_interval=300.0):
+                 promo_clip=None, promo_interval=300.0,
+                 titles=True):
     if media_list == []:
         print("No media files found.")
         return
@@ -231,12 +232,15 @@ def create_video(media_list, video_size, bg_color,
     print("Video size:", video_size)
     print("Codec:", codec)
     print("Background color:", bg_color)
-    print("Artist font:", artist_font)
-    print("Title font:", title_font)
     print("Font size:", font_size)
     print("Fade duration:", fade_duration)
     print("Media duration:", media_duration)
-    print("Title duration:", title_duration)
+    if titles:
+        print("Artist font:", artist_font)
+        print("Title font:", title_font)
+        print("Title duration:", title_duration)
+    else:
+        print("No titles")
     print("Output settings:", output_settings)
     print("Output file:", output_file)
     print("Audio:", audio)
@@ -256,73 +260,90 @@ def create_video(media_list, video_size, bg_color,
 
     # Create a list of clips for each artist's works
     clips = []
+    artist_name = ""
     previous_artist = ""
+    start_time = 0
     for media_path in media_list:
-        # Get the artist name and title from the media filename
-        artist_name = get_artist_name(media_path)
-        title = get_title(media_path)
+        if titles:
+            # Get the artist name and title from the media filename
+            artist_name = get_artist_name(media_path)
+            title = get_title(media_path)
 
-        if artist_name == "" or title == "":
-            print("Skipping", media_path)
-            if artist_name == "":
-                print("Artist name not found.")
-            if title == "":
-                print("Title not found.")
-            continue
+            if artist_name == "" or title == "":
+                print("Skipping", media_path)
+                if artist_name == "":
+                    print("Artist name not found.")
+                if title == "":
+                    print("Title not found.")
+                continue
         
-        print("Adding clip for", artist_name, "-", title)
+            print("Adding clip for", artist_name, "-", title)
 
         # skip if no output file
         if output_file == "": continue
 
-        if previous_artist == artist_name:
+        if titles and previous_artist == artist_name:
             # reduce time between clips
             media_duration_multiplier = 0.85
-        else: # new artist
-            media_duration_multiplier = 1.0
+        else: # new artist or no artist
+            if titles:
+                media_duration_multiplier = 1.0
 
             # handle promo clip
             if time_since_promo >= 0 and time_since_promo >= promo_interval:
                 clips.append(promo_clip)
                 time_since_promo = 0
 
-        intro_clip = display_artist_and_title(
-            artist_name, title, title_duration * media_duration_multiplier, 
-            font_size, artist_font, title_font, bg_color, video_size)
+        if titles:
+            intro_clip = display_artist_and_title(
+                artist_name, title, title_duration * media_duration_multiplier, 
+                font_size, artist_font, title_font, bg_color, video_size)
 
         # Create a clip for the media file
         media_clip = create_media_clip(
             os.path.join(base_path, media_path), media_duration, video_size)
 
-        crossfade_duration = fade_duration * 2.0
-        artist_clip = CompositeVideoClip([
-            intro_clip.fx(
-                vfx.fadein, fade_duration
-            ),
-            media_clip.set_start(title_duration * media_duration_multiplier - crossfade_duration)
-            .crossfadein(crossfade_duration)
-            .fx(
-                vfx.fadeout, fade_duration
-            )
-        ])
+        if titles:
+            crossfade_duration = fade_duration * 2.0
+            artist_clip = CompositeVideoClip([
+                intro_clip.fx(
+                    vfx.fadein, fade_duration
+                ),
+                media_clip.set_start(title_duration * media_duration_multiplier - crossfade_duration)
+                .crossfadein(crossfade_duration)
+                .fx(
+                    vfx.fadeout, fade_duration
+                )
+            ])
+        else:
+            artist_clip = media_clip.set_duration(media_duration).resize(newsize=video_size).set_start(start_time)
+            start_time += media_duration - fade_duration
+            if len(clips) > 0:
+                artist_clip = artist_clip.crossfadein(fade_duration)
 
         clips.append(artist_clip)
         previous_artist = artist_name
         if promo_clip is not None:
             time_since_promo += artist_clip.duration
 
+    print(clips)
+
     # Write the final video to a file
     if output_file != "":
-        # Concatenate all the artist clips into one final video
-        final_clip = concatenate_videoclips(clips)
-        
+        if titles:
+            # Concatenate all the artist clips into one final video
+            final_clip = concatenate_videoclips(clips)
+        else:
+            # create a composite video clip with crossfades
+            final_clip = CompositeVideoClip(clips, size=video_size)
+
         # if mp4 then fast start
         ffmpeg_params=[]
         if output_file.endswith(".mp4"):
             ffmpeg_params=["-movflags", "faststart"]
 
         final_clip.write_videofile(
-            output_file, fps=30, codec=codec, audio=audio, 
+            output_file, fps=30, codec=codec, audio=audio, threads=4,
             ffmpeg_params=ffmpeg_params)
         final_clip.close()
 
@@ -402,6 +423,8 @@ if __name__ == "__main__":
                         default="", help="path to promo clip that plays interspersed with media clips")
     parser.add_argument("--promo_interval", type=str,
                         default="", help="time to wait between promo clips")
+    parser.add_argument("--no_titles", default=False, 
+                        action='store_true', help="Do not display artist name and title")
     # info
     parser.add_argument("--version", action="version", version="%(prog)s 1.0")
     parser.add_argument("--info", action="store_true", help="print moviepy info and exit")
@@ -471,4 +494,5 @@ if __name__ == "__main__":
                  codec=args.codec,
                  base_path=args.base_path,
                  promo_clip=promo_clip,
-                 promo_interval=promo_interval)
+                 promo_interval=promo_interval,
+                 titles=(not args.no_titles))
