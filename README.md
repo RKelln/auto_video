@@ -45,13 +45,13 @@ Underscores are converted to spaces in the auto-titling. File extensions are rem
 ## Running:
 
 ```
-$ python3 create_video.py --base_path ../works --output_settings all_works.txt ../works/
+$ python3 auto_video.py --base_path ../works --output_settings all_works.txt ../works/
 ```
 
 Then you can edit that `all_works.txt` file to curate the list (removing works and ordering) and then run:
 
 ```
-$ python3 create_video.py --base_path ../works --output_file video.mp4 all_works.txt
+$ python3 auto_video.py --base_path ../works --output_file video.mp4 all_works.txt
 ```
 
 It can be helpful to set up a file (e.g. `default_args.txt`) with all the consistent settings between videos:
@@ -74,7 +74,7 @@ Lato-LightItalic
 
 Which can be included like so:
 ```
-$ python3 create_video.py --base_path ../works --output_file video.mp4 @default_args.txt all_works.txt
+$ python3 auto_video.py --base_path ../works --output_file video.mp4 @default_args.txt all_works.txt
 ```
 
 ## Text file format
