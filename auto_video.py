@@ -3,6 +3,8 @@ import re
 import moviepy
 from moviepy.editor import *
 
+VERSION = "1.1"
+
 # Define default values for the command line arguments
 
 # Define the path to the text file with the list of directories
@@ -38,7 +40,7 @@ def display_artist_and_title(artist_name: str, title: str, duration: float, font
     ).set_duration(duration)
 
     # Create a black clip for the title display
-    delay = 0.25
+    delay = 0.25 if duration > 4.0 else 0.0
     title_clip = TextClip(
         title,
         fontsize=font_size, font=title_font, color="white", align="center",
@@ -56,7 +58,7 @@ def display_artist_and_title(artist_name: str, title: str, duration: float, font
 
 # Define the function to display the artist name and title
 def display_artist(artist_name: str, duration: str, font_size: int, font: str, bg_color: str, size: tuple):
-    # Create a black clip for the artist name display
+    # Create a clip for the artist name display
     artist_name_clip = TextClip(
         artist_name,
         fontsize=font_size, font=font, color="white", align="center",
@@ -67,7 +69,7 @@ def display_artist(artist_name: str, duration: str, font_size: int, font: str, b
 
 
 def display_title(title: str, duration: float, font_size: int, font: str, bg_color: str, size: tuple):
-    # Create a black clip for the title display
+    # Create a clip for the title display
     title_clip = TextClip(
         title, fontsize=font_size, font=font, color="white", align="right",
         bg_color=bg_color, size=size
@@ -77,16 +79,19 @@ def display_title(title: str, duration: float, font_size: int, font: str, bg_col
 
 
 # Define the function to create a clip from a media file
-def create_media_clip(media_path, media_duration=7, size=(1920, 1080)):
+def create_media_clip(media_path, media_duration=7, size=(1920, 1080), trim=False):
     # Determine if the media file is an image or video
     if media_path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
         media_clip = ImageClip(media_path, duration=media_duration)
-        media_clip = media_clip.set_duration(media_duration)
+        media_clip.set_duration(media_duration)
     elif media_path.lower().endswith((".mov", ".mp4", ".avi", ".webm")):
         media_clip = VideoFileClip(media_path)
+        if trim: # only display start of video
+            media_clip = media_clip.subclip(0, media_duration)
     else:
         raise ValueError("Unsupported file type: " + media_path)
     
+    # use custom resize() that handles aspect ratios better
     media_clip = resize(media_clip, size).set_position("center")
     return media_clip
 
@@ -115,13 +120,18 @@ def resize(clip, size=(1920, 1080), enlarge=True):
         new_w = size[0]
         new_h = int(new_w / clip_ratio)
     
+    print("clip size:", clip.size, "screen size:", size, "clip ratio:", clip_ratio, "screen ratio:", screen_ratio)
+    print("Resizing from", clip.size, "to", (new_w, new_h))
+
     # Resize the clip
     if enlarge and new_w > clip_w and new_h > clip_h:
         # enlarge to fit
         clip = clip.resize((new_w, new_h))
+        print("Enlarged to", clip.size)
     elif new_w < clip_w or new_h < clip_h:
         # shrink to fit
         clip = clip.resize((new_w, new_h))
+        print("Shrunk to", clip.size)
 
     return clip
 
@@ -201,13 +211,17 @@ def get_artist_name(media_path):
     return artist_name
 
 
-def get_title(media_path):
+def get_title(media_path, expected_number=0):
     # Get the title from the media filename
     title = os.path.splitext(os.path.basename(media_path))[0]
 
     # remove ordering:
     # if the title starts with any number of digits and then underscore, remove those
-    title = re.sub(r"^\d+_", "", title)
+    # if expected number > 0 then only remove if the number is not the expected number (proceeded by any number of zeros)
+    if expected_number > 0:
+        title = re.sub(r"^0*"+str(expected_number)+"_", "", title)
+    else:
+        title = re.sub(r"^\d+_", "", title)
 
     # convert _ to spaces
     title = title.replace("_", " ")
@@ -216,37 +230,39 @@ def get_title(media_path):
 
 
 # create a video from a list of media files
-def create_video(media_list, video_size, bg_color, 
-                 artist_font, title_font, font_size,
+def create_video(media_list, video_size, fps,
+                 bg_color, artist_font, title_font, font_size,
                  fade_duration, media_duration, title_duration,
                  output_settings="", output_file="output.mp4",
                  audio=True, codec = "libx264",
                  base_path="",
                  promo_clip=None, promo_interval=300.0,
-                 titles=True):
+                 titles=True, dryrun=False, verbose=False):
     if media_list == []:
         print("No media files found.")
         return
 
-    print("Creating video from", len(media_list), "media files.")
-    print("Video size:", video_size)
-    print("Codec:", codec)
-    print("Background color:", bg_color)
-    print("Font size:", font_size)
-    print("Fade duration:", fade_duration)
-    print("Media duration:", media_duration)
-    if titles:
-        print("Artist font:", artist_font)
-        print("Title font:", title_font)
-        print("Title duration:", title_duration)
-    else:
-        print("No titles")
-    print("Output settings:", output_settings)
-    print("Output file:", output_file)
-    print("Audio:", audio)
-    print("Base path:", base_path)
-    print("Promo clip:", promo_clip is not None)
-    print("Promo interval:", promo_interval)
+    if verbose:
+        print("Creating video from", len(media_list), "media files.")
+        print("Video size:", video_size)
+        print("Codec:", codec)
+        print("FPS:", fps)
+        print("Background color:", bg_color)
+        print("Font size:", font_size)
+        print("Fade duration:", fade_duration)
+        print("Media duration:", media_duration)
+        if titles:
+            print("Artist font:", artist_font)
+            print("Title font:", title_font)
+            print("Title duration:", title_duration)
+        else:
+            print("No titles")
+        print("Output settings:", output_settings)
+        print("Output file:", output_file)
+        print("Audio:", audio)
+        print("Base path:", base_path)
+        print("Promo clip:", promo_clip is not None)
+        print("Promo interval:", promo_interval)
 
     time_since_promo = -1
     if promo_clip is not None and promo_clip != "":
@@ -263,21 +279,27 @@ def create_video(media_list, video_size, bg_color,
     artist_name = ""
     previous_artist = ""
     start_time = 0
+    media_list = sorted(media_list) # sort media files
+    expected_title_number = 1
     for media_path in media_list:
         if titles:
             # Get the artist name and title from the media filename
             artist_name = get_artist_name(media_path)
-            title = get_title(media_path)
+            # reset expected title number if new artist
+            if artist_name != previous_artist:
+                expected_title_number = 1
+            
+            title = get_title(media_path, expected_number = expected_title_number)
 
-            if artist_name == "" or title == "":
-                print("Skipping", media_path)
-                if artist_name == "":
-                    print("Artist name not found.")
-                if title == "":
-                    print("Title not found.")
+            if artist_name == "":
+                print("ERROR: Artist name not found: ", media_path)
                 continue
+            if title == "":
+                print("Warning: Title not found: ", media_path)
         
-            print("Adding clip for", artist_name, "-", title)
+            if verbose:
+                print("Adding clip for", artist_name, "-", title)
+            expected_title_number += 1
 
         # skip if no output file
         if output_file == "": continue
@@ -294,16 +316,17 @@ def create_video(media_list, video_size, bg_color,
                 clips.append(promo_clip)
                 time_since_promo = 0
 
-        if titles:
+        if titles and title != "" and title_duration > 0:
             intro_clip = display_artist_and_title(
                 artist_name, title, title_duration * media_duration_multiplier, 
                 font_size, artist_font, title_font, bg_color, video_size)
 
         # Create a clip for the media file
         media_clip = create_media_clip(
-            os.path.join(base_path, media_path), media_duration, video_size)
+            os.path.join(base_path, media_path), media_duration, video_size, dryrun)
 
-        if titles:
+        if titles and title != "" and title_duration > 0:
+            # create a composite video clip with titles crossfading to art
             crossfade_duration = fade_duration * 2.0
             artist_clip = CompositeVideoClip([
                 intro_clip.fx(
@@ -316,7 +339,13 @@ def create_video(media_list, video_size, bg_color,
                 )
             ])
         else:
-            artist_clip = media_clip.set_duration(media_duration).resize(newsize=video_size).set_start(start_time)
+            # create an art clip with crossfades to be used in a composite video clip
+            # FIXME: resizing is broken for some reason, some webp images are corrupted, unless they are resized
+            # to the video size, but that distorts anything with different aspect ratios
+            #bg_clip.set_duration(media_duration)
+            #media_clip.set_duration(media_duration).set_start(start_time)
+            #artist_clip = CompositeVideoClip([bg_clip, media_clip], use_bgclip=True)
+            artist_clip = media_clip.set_duration(media_duration).set_start(start_time)
             start_time += media_duration - fade_duration
             if len(clips) > 0:
                 artist_clip = artist_clip.crossfadein(fade_duration)
@@ -326,7 +355,7 @@ def create_video(media_list, video_size, bg_color,
         if promo_clip is not None:
             time_since_promo += artist_clip.duration
 
-    print(clips)
+    #print(clips)
 
     # Write the final video to a file
     if output_file != "":
@@ -343,7 +372,7 @@ def create_video(media_list, video_size, bg_color,
             ffmpeg_params=["-movflags", "faststart"]
 
         final_clip.write_videofile(
-            output_file, fps=30, codec=codec, audio=audio, threads=4,
+            output_file, fps=fps, codec=codec, audio=audio, threads=4,
             ffmpeg_params=ffmpeg_params)
         final_clip.close()
 
@@ -399,6 +428,7 @@ if __name__ == "__main__":
     parser.add_argument("--video_size", type=str,
                         default="1920x1080", help="size of final video")
     parser.add_argument("--codec", type=str, default="libx264", help="codec for final video")
+    parser.add_argument("--fps", type=float, default=30, help="frames per second for final video")
     parser.add_argument("--title_duration", type=float,
                         default=default_title_duration, help="duration of title display")
     parser.add_argument("--media_duration", type=float,
@@ -425,8 +455,12 @@ if __name__ == "__main__":
                         default="", help="time to wait between promo clips")
     parser.add_argument("--no_titles", default=False, 
                         action='store_true', help="Do not display artist name and title")
+    parser.add_argument("--dry_run", default=False, 
+                        action='store_true', help="Create a test video with single frame per clip")
+    parser.add_argument("--verbose", default=False,
+                        action='store_true', help="Print extra information")
     # info
-    parser.add_argument("--version", action="version", version="%(prog)s 1.0")
+    parser.add_argument("--version", action="version", version="%(prog)s " + VERSION)
     parser.add_argument("--info", action="store_true", help="print moviepy info and exit")
     
     args = parser.parse_args()
@@ -468,7 +502,8 @@ if __name__ == "__main__":
         media_list = sorted(media_list)
         # save settings to file named after the final directory
         filename = os.path.basename(args.path_to_list)
-        args.output_settings = filename + ".txt"
+        if args.output_settings == "":
+            args.output_settings = filename + ".txt"
 
     # handle promo clip
     promo_clip = None
@@ -478,9 +513,17 @@ if __name__ == "__main__":
         if args.promo_interval == "":
             promo_interval = 5 * 60.0 # five minute default
 
+    # minimize durations for dryrun
+    if args.dry_run:
+        args.title_duration = 1.0
+        args.media_duration = 0.5
+        args.fade_duration = 0.1
+        args.verbose = True
+
     # create the video
     create_video(media_list,
                  video_size=video_size,
+                 fps=args.fps,
                  bg_color=args.bg_color,
                  artist_font=args.artist_font,
                  title_font=args.title_font,
@@ -495,4 +538,6 @@ if __name__ == "__main__":
                  base_path=args.base_path,
                  promo_clip=promo_clip,
                  promo_interval=promo_interval,
-                 titles=(not args.no_titles))
+                 titles=(not args.no_titles),
+                 dryrun=args.dry_run,
+                 verbose=args.verbose)
