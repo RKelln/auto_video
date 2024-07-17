@@ -91,49 +91,15 @@ def create_media_clip(media_path, media_duration=7, size=(1920, 1080), trim=Fals
     else:
         raise ValueError("Unsupported file type: " + media_path)
     
-    # use custom resize() that handles aspect ratios better
-    media_clip = resize(media_clip, size).set_position("center")
+    if media_clip.size != size:
+        print("Resizing from", media_clip.size, "to", size)
+        clip_ratio = media_clip.w / media_clip.h
+        if clip_ratio > 1:
+            media_clip = media_clip.resize(width=size[0])
+        else:
+            media_clip = media_clip.resize(height=size[1])
+
     return media_clip
-
-
-def resize(clip, size=(1920, 1080), enlarge=True):
-
-    if clip is VideoFileClip:
-        # clip.w and clip.h are wrong and reversed
-        clip_w = clip.h
-        clip_h = clip.w
-    else:
-        clip_w = clip.w
-        clip_h = clip.h
-
-    # Calculate the aspect ratios of the clip and the screen
-    clip_ratio = clip_w / clip_h
-    screen_ratio = size[0] / size[1]
-    
-    # Determine whether to resize based on width or height
-    if screen_ratio > clip_ratio:
-        # Resize based on height
-        new_h = size[1]
-        new_w = int(new_h * clip_ratio)
-    else:   
-        # Resize based on width
-        new_w = size[0]
-        new_h = int(new_w / clip_ratio)
-    
-    print("clip size:", clip.size, "screen size:", size, "clip ratio:", clip_ratio, "screen ratio:", screen_ratio)
-    print("Resizing from", clip.size, "to", (new_w, new_h))
-
-    # Resize the clip
-    if enlarge and new_w > clip_w and new_h > clip_h:
-        # enlarge to fit
-        clip = clip.resize((new_w, new_h))
-        print("Enlarged to", clip.size)
-    elif new_w < clip_w or new_h < clip_h:
-        # shrink to fit
-        clip = clip.resize((new_w, new_h))
-        print("Shrunk to", clip.size)
-
-    return clip
 
 
 def fade_in_out(media_clip, fade_duration=1):
@@ -266,11 +232,16 @@ def create_video(media_list, video_size, fps,
 
     time_since_promo = -1
     if promo_clip is not None and promo_clip != "":
-        # resize the promo clip
-        promo_clip = resize(promo_clip, size=video_size)
+        if isinstance(promo_clip) == str:
+            promo_clip_path = os.path.join(base_path, promo_clip)
+            promo_clip = create_media_clip(
+            media_path=promo_clip_path, 
+            media_duration=media_duration, 
+            size=video_size, 
+            trim=dryrun)
         # fade in and out
         promo_clip = fade_in_out(promo_clip, fade_duration)
-        time_since_promo = promo_interval
+        time_since_promo = promo_interval # set to play immediately
     else:
         promo_clip = None
 
@@ -278,7 +249,6 @@ def create_video(media_list, video_size, fps,
     clips = []
     artist_name = ""
     previous_artist = ""
-    start_time = 0
     media_list = sorted(media_list) # sort media files
     expected_title_number = 1
     for media_path in media_list:
@@ -323,7 +293,10 @@ def create_video(media_list, video_size, fps,
 
         # Create a clip for the media file
         media_clip = create_media_clip(
-            os.path.join(base_path, media_path), media_duration, video_size, dryrun)
+            media_path=os.path.join(base_path, media_path), 
+            media_duration=media_duration, 
+            size=video_size, 
+            trim=dryrun)
 
         if titles and title != "" and title_duration > 0:
             # create a composite video clip with titles crossfading to art
@@ -334,21 +307,11 @@ def create_video(media_list, video_size, fps,
                 ),
                 media_clip.set_start(title_duration * media_duration_multiplier - crossfade_duration)
                 .crossfadein(crossfade_duration)
-                .fx(
-                    vfx.fadeout, fade_duration
-                )
-            ])
+                .set_position("center")
+            ],
+            size=video_size)
         else:
-            # create an art clip with crossfades to be used in a composite video clip
-            # FIXME: resizing is broken for some reason, some webp images are corrupted, unless they are resized
-            # to the video size, but that distorts anything with different aspect ratios
-            #bg_clip.set_duration(media_duration)
-            #media_clip.set_duration(media_duration).set_start(start_time)
-            #artist_clip = CompositeVideoClip([bg_clip, media_clip], use_bgclip=True)
-            artist_clip = media_clip.set_duration(media_duration).set_start(start_time)
-            start_time += media_duration - fade_duration
-            if len(clips) > 0:
-                artist_clip = artist_clip.crossfadein(fade_duration)
+            artist_clip = media_clip
 
         clips.append(artist_clip)
         previous_artist = artist_name
@@ -359,12 +322,8 @@ def create_video(media_list, video_size, fps,
 
     # Write the final video to a file
     if output_file != "":
-        if titles:
-            # Concatenate all the artist clips into one final video
-            final_clip = concatenate_videoclips(clips)
-        else:
-            # create a composite video clip with crossfades
-            final_clip = CompositeVideoClip(clips, size=video_size)
+        clips = [clip.crossfadein(fade_duration) for clip in clips]
+        final_clip = concatenate_videoclips(clips, method="compose", padding = -fade_duration)
 
         # if mp4 then fast start
         ffmpeg_params=[]
@@ -424,38 +383,38 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(fromfile_prefix_chars="@")
     parser.add_argument(
         "path_to_list", nargs="?", help="path to directory or text file with list of directories")
-    parser.add_argument("--base_path", type=str, default="", help="base directory path for media files")
-    parser.add_argument("--video_size", type=str,
+    parser.add_argument("--base_path", "--base-path", type=str, default="", help="base directory path for media files")
+    parser.add_argument("--video_size", "--video-size", type=str,
                         default="1920x1080", help="size of final video")
     parser.add_argument("--codec", type=str, default="libx264", help="codec for final video")
     parser.add_argument("--fps", type=float, default=30, help="frames per second for final video")
-    parser.add_argument("--title_duration", type=float,
+    parser.add_argument("--title_duration", "--title-duration", type=float,
                         default=default_title_duration, help="duration of title display")
-    parser.add_argument("--media_duration", type=float,
+    parser.add_argument("--media_duration", "--media-duration", type=float,
                         default=default_media_duration, help="duration of media display")
-    parser.add_argument("--fade_duration", type=float, default=default_fade_duration,
+    parser.add_argument("--fade_duration", "--fade-duration", type=float, default=default_fade_duration,
                         help="duration (sec) of fade in and fade out")
-    parser.add_argument("--artist_font", type=str, default=default_font,
+    parser.add_argument("--artist_font", "--artist-font", type=str, default=default_font,
                         help="font for artist name")
-    parser.add_argument("--title_font", type=str, default=default_font,
+    parser.add_argument("--title_font", "--title-font", type=str, default=default_font,
                         help="font for artwork title")
-    parser.add_argument("--font_size", type=int, default=default_font_size,
+    parser.add_argument("--font_size", "--font-size",type=int, default=default_font_size,
                         help="font size for artist name and title displays")
-    parser.add_argument("--bg_color", type=str, default=default_bg_color,
+    parser.add_argument("--bg_color", "--bg-color", type=str, default=default_bg_color,
                         help="background color for artist name and title displays")
-    parser.add_argument("--output_file", type=str,
+    parser.add_argument("--output_file", "--output-file",type=str,
                         default="", help="path to output file")
-    parser.add_argument("--output_settings", type=str,
+    parser.add_argument("--output_settings", "--output-settings",type=str,
                         default="", help="path to output settings file")
-    parser.add_argument("--no_audio", default=False,
+    parser.add_argument("--no_audio", "--no-audio", default=False,
                         action='store_true', help="remove audio from video")
-    parser.add_argument("--promo_clip", type=str,
+    parser.add_argument("--promo_clip", "--promo-clip",type=str,
                         default="", help="path to promo clip that plays interspersed with media clips")
-    parser.add_argument("--promo_interval", type=str,
+    parser.add_argument("--promo_interval", "--promo-interval",type=str,
                         default="", help="time to wait between promo clips")
-    parser.add_argument("--no_titles", default=False, 
+    parser.add_argument("--no_titles", "--no-titles",default=False, 
                         action='store_true', help="Do not display artist name and title")
-    parser.add_argument("--dry_run", default=False, 
+    parser.add_argument("--dry_run", "--dry-run", default=False, 
                         action='store_true', help="Create a test video with single frame per clip")
     parser.add_argument("--verbose", default=False,
                         action='store_true', help="Print extra information")
@@ -506,12 +465,8 @@ if __name__ == "__main__":
             args.output_settings = filename + ".txt"
 
     # handle promo clip
-    promo_clip = None
-    if args.promo_clip != "":
-        args.promo_clip = os.path.join(args.base_path, args.promo_clip)
-        promo_clip = create_media_clip(args.promo_clip, args.media_duration, video_size)
-        if args.promo_interval == "":
-            promo_interval = 5 * 60.0 # five minute default
+    if args.promo_clip != "" and args.promo_interval == "":
+        args.promo_interval = 5 * 60.0 # five minute default
 
     # minimize durations for dryrun
     if args.dry_run:
@@ -519,6 +474,7 @@ if __name__ == "__main__":
         args.media_duration = 0.5
         args.fade_duration = 0.1
         args.verbose = True
+        args.no_audio = True
 
     # create the video
     create_video(media_list,
@@ -536,8 +492,8 @@ if __name__ == "__main__":
                  audio=(not args.no_audio),
                  codec=args.codec,
                  base_path=args.base_path,
-                 promo_clip=promo_clip,
-                 promo_interval=promo_interval,
+                 promo_clip=args.promo_clip,
+                 promo_interval=args.promo_interval,
                  titles=(not args.no_titles),
                  dryrun=args.dry_run,
                  verbose=args.verbose)
