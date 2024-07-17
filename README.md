@@ -79,7 +79,7 @@ $ python3 auto_video.py --base_path ../works --output_file video.mp4 @default_ar
 
 ## Text file format
 
-Media wil lbe appended to the video in order specified in the text file:
+Media will be appended to the video in order specified in the text file:
 
 ```
 Artist_Name_1/Work Title1 (YEAR).jpg
@@ -87,56 +87,75 @@ Artist_Name_1/Work_Title2_(YEAR).jpg
 Artist Name 2/Work Title1 (YEAR).mp4
 ```
 
+You can do series of works by numbering the works and having the first work of the series be titles and the rest untitled, like so:
+
+```
+Artist_Name/001_Series_Title_(YEAR).webp
+Artist_Name/002_.webp
+Artist_Name/003_.webp
+Artist_Name/004_Series_Title_2_(YEAR).webp
+Artist_Name/005_.webp
+Artist_Name/006_.mp4
+```
+
+
 # Options
 
 ```
-usage: auto_video.py [-h] [--base_path BASE_PATH] [--video_size VIDEO_SIZE]
-                     [--codec CODEC] [--title_duration TITLE_DURATION]
-                     [--media_duration MEDIA_DURATION]
+usage: auto_video.py [-h] [--base_path BASE_PATH] 
+                     [--video_size VIDEO_SIZE] [--codec CODEC] [--fps FPS]
+                     [--title_duration TITLE_DURATION]
+                     [--media_duration MEDIA_DURATION] 
                      [--fade_duration FADE_DURATION]
                      [--artist_font ARTIST_FONT] [--title_font TITLE_FONT]
-                     [--font_size FONT_SIZE] [--bg_color BG_COLOR]
-                     [--output_file OUTPUT_FILE]
-                     [--output_settings OUTPUT_SETTINGS] [--no_audio]
-                     [--promo_clip PROMO_CLIP]
-                     [--promo_interval PROMO_INTERVAL] [--version] [--info]
+                     [--font_size FONT_SIZE] [--bg_color BG_COLOR] 
+                     [--output_file OUTPUT_FILE] [--output_settings OUTPUT_SETTINGS]
+                     [--no_audio]
+                     [--promo_clip PROMO_CLIP] [--promo_interval PROMO_INTERVAL]
+                     [--no_titles] [--dry_run] [--verbose] [--version] [--info]
                      [path_to_list]
 
 positional arguments:
-  path_to_list          path to directory or text file with list of
-                        directories
+  path_to_list          path to directory or text file with list of directories
 
 options:
   -h, --help            show this help message and exit
-  --base_path BASE_PATH
+  --base_path BASE_PATH, --base-path BASE_PATH
                         base directory path for media files
-  --video_size VIDEO_SIZE
-                        size of final video [default: 1920x1080]
-  --codec CODEC         codec for final video [default: libx264]
-  --title_duration TITLE_DURATION
-                        duration of title display [default: 4 (seconds)]
-  --media_duration MEDIA_DURATION
-                        duration of media display [default: 14 (seconds)]
-  --fade_duration FADE_DURATION
-                        duration (sec) of fade in and fade out [default: 0.5 (seconds)]
-  --artist_font ARTIST_FONT
-                        font for artist name [default: Arial]
-  --title_font TITLE_FONT
-                        font for artwork title  [default: Arial]
-  --font_size FONT_SIZE
-                        font size for artist name and title displays  [default: 50]
-  --bg_color BG_COLOR   background color for artist name and title displays  [default: black]
-  --output_file OUTPUT_FILE
+  --video_size VIDEO_SIZE, --video-size VIDEO_SIZE
+                        size of final video
+  --codec CODEC         codec for final video
+  --fps FPS             frames per second for final video
+  --title_duration TITLE_DURATION, --title-duration TITLE_DURATION
+                        duration of title display
+  --media_duration MEDIA_DURATION, --media-duration MEDIA_DURATION
+                        duration of media display
+  --fade_duration FADE_DURATION, --fade-duration FADE_DURATION
+                        duration (sec) of fade in and fade out
+  --artist_font ARTIST_FONT, --artist-font ARTIST_FONT
+                        font for artist name
+  --title_font TITLE_FONT, --title-font TITLE_FONT
+                        font for artwork title
+  --font_size FONT_SIZE, --font-size FONT_SIZE
+                        font size for artist name and title displays
+  --bg_color BG_COLOR, --bg-color BG_COLOR
+                        background color for artist name and title displays
+  --output_file OUTPUT_FILE, --output-file OUTPUT_FILE
                         path to output file
-  --output_settings OUTPUT_SETTINGS
+  --output_settings OUTPUT_SETTINGS, --output-settings OUTPUT_SETTINGS
                         path to output settings file
-  --no_audio            remove audio from video
-  --promo_clip PROMO_CLIP
-                        path to promo clip that plays interspersed with media
-                        clips
-  --promo_interval PROMO_INTERVAL
+  --no_audio, --no-audio
+                        remove audio from video
+  --promo_clip PROMO_CLIP, --promo-clip PROMO_CLIP
+                        path to promo clip that plays interspersed with media clips
+  --promo_interval PROMO_INTERVAL, --promo-interval PROMO_INTERVAL
                         time to wait between promo clips
+  --no_titles, --no-titles
+                        Do not display artist name and title
+  --dry_run, --dry-run  Create a test video with single frame per clip
+  --verbose             Print extra information
   --version             show program's version number and exit
+  --info                print moviepy info and exit
 ```
 
 Note that times specified in the arguments can be time strings in the form of 00:00:00.000 or just a float value in seconds.
