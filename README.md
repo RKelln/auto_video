@@ -37,6 +37,7 @@ This is designed to work with well-named file structures, for example:
   - Artist Name 2
     - 01_Order_by_Number_not_title_(2023).jpg
     - 02_Another_title_(2023).mp4
+    - 03_01010101.jpg
     - _ignore_files_starting_with_underscores in the automatic list generation.jpg
 
 Underscores are converted to spaces in the auto-titling. File extensions are removed as are numbers preceding the title.
