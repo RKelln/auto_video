@@ -177,20 +177,18 @@ def get_artist_name(media_path):
     return artist_name
 
 
-def get_title(media_path, expected_number=0):
+def get_title(media_path):
     # Get the title from the media filename
     title = os.path.splitext(os.path.basename(media_path))[0]
 
     # remove ordering:
-    # if the title starts with any number of digits and then underscore, remove those
-    # if expected number > 0 then only remove if the number is not the expected number (proceeded by any number of zeros)
-    if expected_number > 0:
-        title = re.sub(r"^0*"+str(expected_number)+"_", "", title)
-    else:
-        title = re.sub(r"^\d+_", "", title)
+    title = re.sub(r"^\d+_", "", title)
 
     # convert _ to spaces
     title = title.replace("_", " ")
+
+    # if only spaces then remove them
+    title = title.strip()
 
     return title
 
@@ -250,16 +248,12 @@ def create_video(media_list, video_size, fps,
     artist_name = ""
     previous_artist = ""
     media_list = sorted(media_list) # sort media files
-    expected_title_number = 1
+
     for media_path in media_list:
         if titles:
             # Get the artist name and title from the media filename
             artist_name = get_artist_name(media_path)
-            # reset expected title number if new artist
-            if artist_name != previous_artist:
-                expected_title_number = 1
-            
-            title = get_title(media_path, expected_number = expected_title_number)
+            title = get_title(media_path)
 
             if artist_name == "":
                 print("ERROR: Artist name not found: ", media_path)
@@ -269,7 +263,6 @@ def create_video(media_list, video_size, fps,
         
             if verbose:
                 print("Adding clip for", artist_name, "-", title)
-            expected_title_number += 1
 
         # skip if no output file
         if output_file == "": continue
